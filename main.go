@@ -9,51 +9,46 @@ const (
 	Right Direction = "Right"
 )
 
-func turnDial(direction Direction, currentPos int, distance int) int {
-	min := 0
-	max := 99
+func turnDial(direction Direction, currentPos int, distance int) (int, int) {
+	crossedZero := 0
+	newPos := 0
 
 	switch direction {
 	case Left:
-		newPos := currentPos - distance
-		for newPos < min {
-			newPos += (max - min + 1)
+		if currentPos == 0 {
+			crossedZero = distance / 100
+		} else if distance >= currentPos {
+			crossedZero = (distance-currentPos)/100 + 1
 		}
-		return newPos
+		newPos = ((currentPos-distance)%100 + 100) % 100
+		return newPos, crossedZero
 	case Right:
-		newPos := currentPos + distance
-		for newPos > max {
-			newPos -= (max - min + 1)
-		}
-		return newPos
+		crossedZero = (currentPos + distance) / 100
+		newPos = (currentPos + distance) % 100
+		return newPos, crossedZero
 	}
 
-	return currentPos
+	return currentPos, crossedZero
 }
 
 func main() {
-
 	currentPosition := 50
-
-	fmt.Println("Starting at position:", currentPosition)
-
 	zeroCount := 0
 
 	for _, input := range inputs {
+		var distance int
+		var crossedZero int
+
 		switch input[0] {
 		case 'L':
-			var distance int
 			fmt.Sscanf(input[1:], "%d", &distance)
-			currentPosition = turnDial(Left, currentPosition, distance)
+			currentPosition, crossedZero = turnDial(Left, currentPosition, distance)
 		case 'R':
-			var distance int
 			fmt.Sscanf(input[1:], "%d", &distance)
-			currentPosition = turnDial(Right, currentPosition, distance)
+			currentPosition, crossedZero = turnDial(Right, currentPosition, distance)
 		}
 
-		if currentPosition == 0 {
-			zeroCount++
-		}
+		zeroCount += crossedZero
 	}
 
 	fmt.Println("Password:", zeroCount)
