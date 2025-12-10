@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/NickDare/AoC-2025/utils"
 )
@@ -77,8 +78,82 @@ func partA(input []string) {
 	fmt.Println("Max area:", maxArea)
 }
 
+type RowRanges struct {
+	minX, maxX int
+}
+
+type FilledRows map[int]RowRanges
+
+func (f FilledRows) createRanges(y, x1, x2 int) {
+	if x1 > x2 {
+		x1, x2 = x2, x1
+	}
+	if ranges, exists := f[y]; exists {
+		if x1 < ranges.minX {
+			ranges.minX = x1
+		}
+		if x2 > ranges.maxX {
+			ranges.maxX = x2
+		}
+		f[y] = ranges
+	} else {
+		f[y] = RowRanges{x1, x2}
+	}
+}
+
+func (f FilledRows) isValidRectangle(minX, maxX, minY, maxY int) bool {
+	for y := minY; y <= maxY; y++ {
+		bounds, exists := f[y]
+		if !exists || bounds.minX > minX || bounds.maxX < maxX {
+			return false
+		}
+	}
+	return true
+}
+
 func partB(input []string) {
-	fmt.Println(input)
+	startTotal := time.Now()
+	tileCords := make([][2]int, 0)
+	for line := range input {
+		x, y := parseCoordinates(input[line])
+		tileCords = append(tileCords, [2]int{x, y})
+	}
+
+	filledRows := make(FilledRows)
+	for i := 0; i < len(tileCords); i++ {
+		for j := i + 1; j < len(tileCords); j++ {
+			x1, y1 := tileCords[i][0], tileCords[i][1]
+			x2, y2 := tileCords[j][0], tileCords[j][1]
+
+			if x1 == x2 {
+				if y1 > y2 {
+					y1, y2 = y2, y1
+				}
+				for y := y1; y <= y2; y++ {
+					filledRows.createRanges(y, x1, x1)
+				}
+			} else if y1 == y2 {
+				filledRows.createRanges(y1, x1, x2)
+			}
+		}
+	}
+
+	maxArea := 0
+	for i := 0; i < len(tileCords); i++ {
+		for j := i + 1; j < len(tileCords); j++ {
+			x1, y1 := tileCords[i][0], tileCords[i][1]
+			x2, y2 := tileCords[j][0], tileCords[j][1]
+
+			minX, maxX := min(x1, x2), max(x1, x2)
+			minY, maxY := min(y1, y2), max(y1, y2)
+			area := (maxX - minX + 1) * (maxY - minY + 1)
+
+			if area > maxArea && filledRows.isValidRectangle(minX, maxX, minY, maxY) {
+				maxArea = area
+			}
+		}
+	}
+	fmt.Printf("Max area: %d (took %v)\n", maxArea, time.Since(startTotal))
 }
 
 func main() {
@@ -86,6 +161,6 @@ func main() {
 	myInput := utils.ReadInput("myInput.txt")
 	partA(eInput)
 	partA(myInput)
-	// partB(eInput)
-	// partB(myInput)
+	partB(eInput)
+	partB(myInput)
 }
