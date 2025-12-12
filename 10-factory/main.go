@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/NickDare/AoC-2025/utils"
+	"github.com/draffensperger/golp"
 )
 
 type Diagram []bool
@@ -78,7 +79,7 @@ func parseManualInstructions(input string) (Diagram, Schematics, Joltages) {
 	return parseDiagram(input), parseSchematics(input), parseJoltages(input)
 }
 
-func calcLowestInputsNeeded(d Diagram, s Schematics, j Joltages) int {
+func calcLowestInputsNeeded(d Diagram, s Schematics) int {
 	totalSchematics := len(s)
 	lowestInputs := totalSchematics + 1
 
@@ -106,11 +107,51 @@ func calcLowestInputsNeeded(d Diagram, s Schematics, j Joltages) int {
 	return lowestInputs
 }
 
+func calcLowestInputsNeededWithJoltages(s Schematics, j Joltages) int {
+	numPositions := len(j)
+	numSchematics := len(s)
+
+	lp := golp.NewLP(0, numSchematics)
+	objCoeffs := make([]float64, numSchematics)
+	for i := range objCoeffs {
+		objCoeffs[i] = 1.0
+	}
+	lp.SetObjFn(objCoeffs)
+	for i := 0; i < numSchematics; i++ {
+		lp.SetInt(i, true)
+	}
+
+	for posIdx := 0; posIdx < numPositions; posIdx++ {
+		coeffs := make([]float64, numSchematics)
+		for schemIdx, schematic := range s {
+			for _, pos := range schematic {
+				if pos == posIdx {
+					coeffs[schemIdx] = 1.0
+					break
+				}
+			}
+		}
+
+		target := float64(j[posIdx])
+		lp.AddConstraint(coeffs, golp.EQ, target)
+	}
+
+	solutionType := lp.Solve()
+	if solutionType != golp.OPTIMAL {
+		return -1
+	}
+
+	objVal := lp.Objective()
+	result := int(math.Round(objVal))
+
+	return result
+}
+
 func partA(input []string) {
 	lowestInputs := []int{}
 	for i := range input {
-		dia, schem, jolts := parseManualInstructions(input[i])
-		lowest := calcLowestInputsNeeded(dia, schem, jolts)
+		dia, schem, _ := parseManualInstructions(input[i])
+		lowest := calcLowestInputsNeeded(dia, schem)
 		lowestInputs = append(lowestInputs, lowest)
 	}
 
@@ -123,6 +164,19 @@ func partA(input []string) {
 }
 
 func partB(input []string) {
+	lowestInputs := []int{}
+	for i := range input {
+		_, schem, jolts := parseManualInstructions(input[i])
+		lowest := calcLowestInputsNeededWithJoltages(schem, jolts)
+		lowestInputs = append(lowestInputs, lowest)
+	}
+
+	sumOfLowest := 0
+	for _, li := range lowestInputs {
+		sumOfLowest += li
+	}
+
+	fmt.Println("Part B:", sumOfLowest)
 }
 
 func main() {
@@ -131,4 +185,5 @@ func main() {
 	partA(input)
 	partA(myInput)
 	partB(input)
+	partB(myInput)
 }
